@@ -1,0 +1,50 @@
+name: Build Geode Mod
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - name: Android64
+            os: ubuntu-latest
+            target: Android64
+
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build the mod
+        uses: geode-sdk/build-geode-mod@main
+        with:
+          target: ${{ matrix.config.target }}
+          # For Geode 2.2.144 / GD 2.2.0 era mods, sdk version may be pinned if needed.
+          # Leaving default uses the action's configured SDK; adjust if build requires specific SDK.
+          combine: true
+
+  package:
+    name: Package .geode
+    runs-on: ubuntu-latest
+    needs: ['build']
+
+    steps:
+      - name: Combine builds
+        uses: geode-sdk/build-geode-mod/combine@main
+        id: build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartInputSmoother-geode
+          path: ${{ steps.build.outputs.build-output }}
