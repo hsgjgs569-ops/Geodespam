@@ -4,6 +4,8 @@
 #include <cocos2d.h>
 #include <algorithm>
 #include <string>
+#include <unordered_map>
+#include <cmath>
 
 using namespace geode::prelude;
 
@@ -39,15 +41,14 @@ class $modify(SmoothInputLayer, GJBaseGameLayer) {
 
     static void onModify(auto& self) {
         // Intercept early so other mods see smoothed stream; adjust if needed.
-        (void) self.setHookPriority("GJBaseGameLayer::handleButton", Priority::VeryEarlyPre);
+        (void) self.setHookPriority("GJBaseGameLayer::handleButton", Priority::VeryEarly);
     }
 
     // Safe dispatch of (possibly emulated) input back into the game.
     void dispatchButton(bool down, int button, bool isPlayer1) {
-        auto fields = m_fields.self();
-        fields->suppressHook = true;
+        m_fields->suppressHook = true;
         GJBaseGameLayer::handleButton(down, button, isPlayer1);
-        fields->suppressHook = false;
+        m_fields->suppressHook = false;
     }
 
     int getTargetCps() {
@@ -70,7 +71,7 @@ class $modify(SmoothInputLayer, GJBaseGameLayer) {
 
     // Pulse engine: called every frame while any physical button is held.
     void pulseUpdate(float dt) {
-        auto fields = m_fields.self();
+        auto fields = m_fields;
         if (!fields) return;
 
         if (!isEnabled()) {
@@ -82,7 +83,7 @@ class $modify(SmoothInputLayer, GJBaseGameLayer) {
                 }
                 st.physicalHeld = false;
             }
-            CCScheduler::get()->unscheduleSelector(schedule_selector(SmoothInputLayer::pulseUpdate), this);
+            cocos2d::CCDirector::sharedDirector()->getScheduler()->unscheduleSelector(schedule_selector(SmoothInputLayer::pulseUpdate), this);
             return;
         }
 
@@ -151,13 +152,13 @@ class $modify(SmoothInputLayer, GJBaseGameLayer) {
         }
 
         if (!anyHeld) {
-            CCScheduler::get()->unscheduleSelector(schedule_selector(SmoothInputLayer::pulseUpdate), this);
+            cocos2d::CCDirector::sharedDirector()->getScheduler()->unscheduleSelector(schedule_selector(SmoothInputLayer::pulseUpdate), this);
             accumMap.erase(this);
         }
     }
 
     void ensureScheduled() {
-        auto sched = CCScheduler::get();
+        auto sched = cocos2d::CCDirector::sharedDirector()->getScheduler();
         if (!sched->isScheduled(schedule_selector(SmoothInputLayer::pulseUpdate), this)) {
             // Run every frame for precise timing
             sched->scheduleSelector(schedule_selector(SmoothInputLayer::pulseUpdate), this, 0.f, false);
@@ -165,7 +166,7 @@ class $modify(SmoothInputLayer, GJBaseGameLayer) {
     }
 
     void handleButton(bool down, int button, bool isPlayer1) {
-        auto fields = m_fields.self();
+        auto fields = m_fields;
 
         // Pass through emulated events and when disabled or when in recursion guard
         if (fields->suppressHook || !isEnabled()) {
