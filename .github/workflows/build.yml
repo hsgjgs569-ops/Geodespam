@@ -29,8 +29,8 @@ jobs:
         uses: geode-sdk/build-geode-mod@main
         with:
           target: ${{ matrix.config.target }}
-          # For Geode 2.2.144 / GD 2.2.0 era mods, sdk version may be pinned if needed.
-          # Leaving default uses the action's configured SDK; adjust if build requires specific SDK.
+          sdk: 'v2.0.0-beta.27'
+          cli: 'v3.0.0'
           combine: true
 
   package:
